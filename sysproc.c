@@ -124,6 +124,12 @@ char *name_of_syscall[NUM_SYSCALLS + 1] = {
 "sys_ps",
 "sys_send",
 "sys_recv",
+
+//
+"sys_create_container",
+"sys_destroy_container",
+"sys_join_container",
+"sys_leave_container",
 };
 
 int syscall_counter[NUM_SYSCALLS + 1];
@@ -197,25 +203,29 @@ sys_recv()
 int
 sys_create_container(void)
 {
-
+  return create_container();
 }
 
 int
 sys_destroy_container(void)
 {
-
+  uint cid;
+  if(argint(0, (int*)&cid) < 0) return -1;
+  return destroy_container(cid);
 } 
 
 int
 sys_join_container(void)
 {
-
+  uint cid;
+  if(argint(0, (int*)&cid) < 0) return -1;
+  return join_container(cid);
 }
 
 int
-leave_container(void)
+sys_leave_container(void)
 {
-
+  return leave_container();
 }
 
 

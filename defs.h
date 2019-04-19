@@ -126,6 +126,11 @@ void            qinit(void);
 int             send_message(int, int, char*);
 int             recv_message(char*);
 
+int 			create_container(void);
+int 			destroy_container(uint);
+int 			join_container(uint);
+int 			leave_container(void);
+
 // swtch.S
 void            swtch(struct context**, struct context*);
 

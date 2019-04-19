@@ -147,10 +147,10 @@ static int (*syscalls[])(void) = {
 [SYS_send]          sys_send,
 [SYS_recv]          sys_recv,
 
-[SYS_create_container]    sys_create_container
-[SYS_destroy_container]   sys_destroy_container
-[SYS_join_container]      sys_join_container
-[SYS_leave_container]     leave_container
+[SYS_create_container]    sys_create_container,
+[SYS_destroy_container]   sys_destroy_container,
+[SYS_join_container]      sys_join_container,
+[SYS_leave_container]     sys_leave_container,
 
 };
 

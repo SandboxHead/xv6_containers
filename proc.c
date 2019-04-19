@@ -12,6 +12,13 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+
+struct {
+  // struct spinlock lock;
+  struct cont cont[NCONT];
+} ctable;
+
+
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -649,3 +656,30 @@ recv_message(char * msg)
     return ret;
 }
 /*****************************************************************************/
+
+
+int
+create_container()
+{
+    return 0;
+}
+
+int
+destroy_container(uint cid)
+{
+    return 0;
+}
+
+int
+join_container(uint cid)
+{
+    return 0;
+}
+
+int
+leave_container()
+{
+    return 0;
+}
+
+
