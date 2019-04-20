@@ -661,18 +661,30 @@ recv_message(char * msg)
 int
 create_container()
 {
-    return 0;
+    for(int i=0; i<NCONT; i++){
+        if(ctable.cont[i].state == INACTIVE){
+            ctable.cont[i].cid = i+1;
+            ctable.cont[i].state = ACTIVE;
+            return i+1;
+        }
+    }
+    return -1;
 }
 
 int
 destroy_container(uint cid)
 {
-    return 0;
+    if(ctable.cont[cid].state == ACTIVE){
+        ctable.cont[cid].state = INACTIVE;
+        return 1;
+    }
+    return -1;
 }
 
 int
 join_container(uint cid)
 {
+
     return 0;
 }
 

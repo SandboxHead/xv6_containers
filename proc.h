@@ -51,8 +51,12 @@ struct proc {
   char name[16];               // Process name (debugging)
 };
 
+enum contstate { INACTIVE, ACTIVE };
+
 struct cont {
-  int val;
+  enum contstate state;
+  struct proc myprocs[NPROC];
+  int cid;
 };
 
 // Process memory is laid out contiguously, low addresses first:
