@@ -14,8 +14,9 @@ struct {
 
 
 struct {
-  // struct spinlock lock;
+  struct spinlock lock;
   struct cont cont[NCONT];
+  int userCont;
 } ctable;
 
 
@@ -31,6 +32,22 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+}
+
+void
+cinit(void)
+{
+  initlock(&ctable.lock, "ctable");
+  acquire(&ctable.lock);
+  for(int i=0; i<NCONT; i++){
+    ctable.cont[i].state = INACTIVE;
+    ctable.cont[i].cid = -1;
+    ctable.cont[i].last_active = -1;
+    for(int j=0; j<NPROC; j++){
+      ctable.cont[i].mypids[j] = 0;
+    }
+  }
+  release(&ctable.lock);
 }
 
 // Must be called with interrupts disabled
@@ -95,6 +112,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->cid = -1;
 
   release(&ptable.lock);
 
@@ -131,7 +149,9 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+  // int userCont = create_container();
+  // ptable.userCont = userCont;
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -221,6 +241,7 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  np->cid = curproc->cid;
   np->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -339,6 +360,35 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    acquire(&ctable.lock);
+    for(int i=0; i<NCONT; i++){
+    	if(ctable.cont[i].state == ACTIVE){
+    		// int i = 0;
+    		int last_active = ctable.cont[i].last_active;
+    		if(last_active != -1){
+    			for(int j=0; j<NPROC; j++){
+    				if(ptable.proc[j].pid == last_active){
+    					ptable.proc[j].cstate = ptable.proc[j].state;
+    					ptable.proc[j].state = SLEEPING;
+    					break;
+    				}
+    			}
+			}
+			for(int j=0; j<NPROC; j++){
+				if(ctable.cont[i].mypids[(j+last_active+1)%NPROC] == 1){
+					last_active = j;
+					for(int k=0; k<NPROC; k++){
+						if(ptable.proc[k].pid == j){
+							ptable.proc[k].state = RUNNABLE;
+							break;
+						}
+					}
+					break;
+				}
+			}
+    	}
+    }
+    release(&ctable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
@@ -357,6 +407,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+	// cprintf("Choosing the pid: %d", p->pid);
     release(&ptable.lock);
 
   }
@@ -544,13 +595,18 @@ procdump(void)
 int
 ps(void)
 {
+	acquire(&ptable.lock);
+	acquire(&ctable.lock);
     struct proc * p;
+	struct proc *curproc = myproc();
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-        if (p->state == UNUSED)
+        if (p->state == UNUSED || p->cid != curproc->cid)
             continue;
         cprintf("pid:%d name:%s\n", p->pid, p->name);
     }
+    release(&ptable.lock);
+    release(&ctable.lock);
     return 0;
 }
 
@@ -661,36 +717,92 @@ recv_message(char * msg)
 int
 create_container()
 {
+    acquire(&ctable.lock);
     for(int i=0; i<NCONT; i++){
         if(ctable.cont[i].state == INACTIVE){
-            ctable.cont[i].cid = i+1;
+            ctable.cont[i].cid = i;
             ctable.cont[i].state = ACTIVE;
-            return i+1;
+            release(&ctable.lock);
+            return i;
         }
     }
+    release(&ctable.lock);
     return -1;
 }
 
 int
 destroy_container(uint cid)
 {
+   	struct proc *curproc = myproc();
+   	if(curproc->cid != cid) return -1;
+
+    acquire(&ctable.lock);
     if(ctable.cont[cid].state == ACTIVE){
         ctable.cont[cid].state = INACTIVE;
+       	for(int i=0; i<NPROC; i++){
+	   		if(ctable.cont[cid].mypids[i] == 1){
+	   			kill(i);
+			}
+   		}
+        release(&ctable.lock);
         return 1;
     }
+    release(&ctable.lock);
     return -1;
 }
 
 int
 join_container(uint cid)
 {
+    acquire(&ptable.lock);
+    acquire(&ctable.lock);
+    struct proc *curproc = myproc();
+    if(curproc->cid != -1){
+    	return -1;
+    }
+    if(ctable.cont[cid].state == INACTIVE){
+	    release(&ctable.lock);
+		return -2;
+    }
+    curproc->cid = cid;
+    ctable.cont[cid].mypids[curproc->pid] = 1;
+    curproc->cstate = curproc->state;
+    curproc->state = SLEEPING;
+    // if(ptable[]->state == SLEEPING) cprintf("SLEEPING\n" );
 
+    // for(int i=0; i<NPROC; i++){
+    // 	if(ptable.proc[i].pid == curproc->pid){
+    // 		cprintf("Found ");
+    // 		if(ptable.proc[i].state == SLEEPING){
+    // 			cprintf("Sleeping\n");
+    // 		}
+    // 	}
+    // }
+    release(&ctable.lock);
+    sched();
+    release(&ptable.lock);
+    // sched();
     return 0;
 }
 
 int
 leave_container()
 {
+    struct proc *curproc = myproc();
+    if(curproc->cid == -1){
+      return -1;	
+    }
+    int tempcid = curproc->cid;
+    int temppid = curproc->pid;
+
+    acquire(&ctable.lock);
+    ctable.cont[tempcid].mypids[temppid] = 0;
+    acquire(&ptable.lock);
+    curproc->cid = -1;
+    curproc->state = curproc->cstate;
+    release(&ctable.lock);
+
+    release(&ptable.lock);
     return 0;
 }
 
