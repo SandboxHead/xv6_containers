@@ -361,36 +361,41 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     acquire(&ctable.lock);
+
     for(int i=0; i<NCONT; i++){
-    	if(ctable.cont[i].state == ACTIVE){
-    		// int i = 0;
-    		int last_active = ctable.cont[i].last_active;
-    		if(last_active != -1){
-    			for(int j=0; j<NPROC; j++){
-    				if(ptable.proc[j].pid == last_active){
-    					ptable.proc[j].cstate = ptable.proc[j].state;
-    					ptable.proc[j].state = SLEEPING;
-    					break;
-    				}
-    			}
-			}
-			for(int j=0; j<NPROC; j++){
-				if(ctable.cont[i].mypids[(j+last_active+1)%NPROC] == 1){
-					last_active = j;
-					for(int k=0; k<NPROC; k++){
-						if(ptable.proc[k].pid == j){
-							ptable.proc[k].state = RUNNABLE;
-							break;
-						}
-					}
-					break;
-				}
-			}
-    	}
+
+      if(ctable.cont[i].state == INACTIVE) continue;
+
+      for(int j=0; j<NPROC; j++){
+
+        int currind = (j + ctable.cont[i].last_active + 1)%NPROC;
+
+        if(ctable.cont[i].mypids[currind] == 1 && ptable.proc[currind].state == RUNNABLE){
+          ctable.cont[i].last_active = j;
+          release(&ctable.lock);
+
+          p = ptable.proc + currind;
+
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+
+          acquire(&ctable.lock);
+
+          break;
+        }
+      }
     }
+    // cprintf("Gone beyond\n");
     release(&ctable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE || p->cid != -1)
         continue;
 
       // Switch to chosen process.  It is the process's job
@@ -739,11 +744,11 @@ destroy_container(uint cid)
     acquire(&ctable.lock);
     if(ctable.cont[cid].state == ACTIVE){
         ctable.cont[cid].state = INACTIVE;
-       	for(int i=0; i<NPROC; i++){
-	   		if(ctable.cont[cid].mypids[i] == 1){
-	   			kill(i);
-			}
-   		}
+       // 	for(int i=0; i<NPROC; i++){
+  	   	// 	if(ctable.cont[cid].mypids[i] == 1){
+  	   	// 		kill(i);
+    			// }
+     		// }
         release(&ctable.lock);
         return 1;
     }
@@ -758,16 +763,27 @@ join_container(uint cid)
     acquire(&ctable.lock);
     struct proc *curproc = myproc();
     if(curproc->cid != -1){
+      release(&ctable.lock);
+      release(&ptable.lock);
+
     	return -1;
     }
     if(ctable.cont[cid].state == INACTIVE){
 	    release(&ctable.lock);
-		return -2;
+      release(&ptable.lock);
+
+		  return -2;
     }
     curproc->cid = cid;
-    ctable.cont[cid].mypids[curproc->pid] = 1;
-    curproc->cstate = curproc->state;
-    curproc->state = SLEEPING;
+
+    int pidindex = -1;
+    for(pidindex = 0; pidindex<NPROC; pidindex++){
+      if(ptable.proc[pidindex].pid == curproc->pid) break;
+    }
+    // cprintf("Going forward\n");
+    ctable.cont[cid].mypids[pidindex] = 1;
+    // curproc->cstate = curproc->state;
+    // curproc->state = SLEEPING;
     // if(ptable[]->state == SLEEPING) cprintf("SLEEPING\n" );
 
     // for(int i=0; i<NPROC; i++){
@@ -779,6 +795,8 @@ join_container(uint cid)
     // 	}
     // }
     release(&ctable.lock);
+    // cprintf("Before schedule\n");
+    curproc->state = RUNNABLE;
     sched();
     release(&ptable.lock);
     // sched();
@@ -793,14 +811,21 @@ leave_container()
       return -1;	
     }
     int tempcid = curproc->cid;
-    int temppid = curproc->pid;
+    // int temppid = curproc->pid;
+
+    int pidindex = -1;
+    for(pidindex = 0; pidindex<NPROC; pidindex++){
+      if(ptable.proc[pidindex].pid == curproc->pid) break;
+    }
+
 
     acquire(&ctable.lock);
-    ctable.cont[tempcid].mypids[temppid] = 0;
+    ctable.cont[tempcid].mypids[pidindex] = 0;
+    release(&ctable.lock);
+
     acquire(&ptable.lock);
     curproc->cid = -1;
-    curproc->state = curproc->cstate;
-    release(&ctable.lock);
+    // curproc->state = curproc->cstate;
 
     release(&ptable.lock);
     return 0;

@@ -50,7 +50,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int cid;                     // Containing container
-  enum procstate cstate;       // state seen by container
+  // enum procstate cstate;       // state seen by container
 };
 
 enum contstate { INACTIVE, ACTIVE };
