@@ -184,9 +184,10 @@ UPROGS=\
 	_print_count\
 	_user_toggle\
 	_test\
+	_cp\
 
-fs.img: mkfs README $(UPROGS)
-	./mkfs fs.img README $(UPROGS)
+fs.img: mkfs README randome.txt $(UPROGS)
+	./mkfs fs.img README randome.txt $(UPROGS)
 
 -include *.d
 
@@ -251,6 +252,7 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # check in that version.
 
 EXTRA=\
+	cp.c\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\
 	printf.c umalloc.c\

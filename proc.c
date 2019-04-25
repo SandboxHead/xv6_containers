@@ -8,10 +8,10 @@
 #include "spinlock.h"
 
 struct {
+  int log;
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
-
 
 struct {
   struct spinlock lock;
@@ -31,6 +31,7 @@ static void wakeup1(void *chan);
 void
 pinit(void)
 {
+  ptable.log = 0;
   initlock(&ptable.lock, "ptable");
 }
 
@@ -375,6 +376,10 @@ scheduler(void)
           release(&ctable.lock);
 
           p = ptable.proc + currind;
+
+          if(ptable.log == 1){
+            cprintf("Container %d : Scheduling Process %d\n", p->cid, p->pid);
+          }
 
           c->proc = p;
           switchuvm(p);
@@ -831,4 +836,16 @@ leave_container()
     return 0;
 }
 
+int 
+logon()
+{
+  ptable.log = 1;
+  return 0;
+}
 
+int
+logoff()
+{
+  ptable.log = 0;
+  return 0;
+}

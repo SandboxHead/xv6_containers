@@ -130,6 +130,8 @@ int 			create_container(void);
 int 			destroy_container(uint);
 int 			join_container(uint);
 int 			leave_container(void);
+int 			logon(void);
+int 			logoff(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

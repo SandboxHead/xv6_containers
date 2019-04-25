@@ -238,12 +238,87 @@ bad:
   return -1;
 }
 
+
+static struct inode*
+create_cid(char *path, short type, short major, short minor, int cid)
+{
+  uint off;
+  struct inode *ip, *dp;
+  char name[DIRSIZ];
+  int i;
+  for(i = 0;; i++){
+    if(path[i] == '\0') break;
+  }
+  char path_new[i+8];
+
+  if(cid != -1){
+
+    for(int j=0; j<i; j++){
+      path_new[j] = path[j];
+    }
+    path_new[i+7] = '\0';
+    char one = cid/10 + '0';
+    char two = cid%10 + '0';
+
+    path_new[i] = '_';
+    path_new[i+1] = one;
+    path_new[i+2] = two;
+    path_new[i+3] = '.';
+    path_new[i+4] = 'c';
+    path_new[i+5] = 'i';
+    path_new[i+6] = 'd';
+
+    path = path_new;
+    // cprintf("%s\n", path);
+  }
+  // cprintf("%s\n", path);
+
+  if((dp = nameiparent(path, name)) == 0)
+    return 0;
+  ilock(dp);
+
+  if((ip = dirlookup(dp, name, &off)) != 0){
+    iunlockput(dp);
+    ilock(ip);
+    if(type == T_FILE && ip->type == T_FILE)
+      return ip;
+    iunlockput(ip);
+    return 0;
+  }
+
+  if((ip = ialloc(dp->dev, type)) == 0)
+    panic("create: ialloc");
+
+  ilock(ip);
+  ip->major = major;
+  ip->minor = minor;
+  ip->nlink = 1;
+  iupdate(ip);
+
+  if(type == T_DIR){  // Create . and .. entries.
+    dp->nlink++;  // for ".."
+    iupdate(dp);
+    // No ip->nlink++ for ".": avoid cyclic ref count.
+    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+      panic("create dots");
+  }
+
+  if(dirlink(dp, name, ip->inum) < 0)
+    panic("create: dirlink");
+
+  iunlockput(dp);
+
+  return ip;
+}
+
 static struct inode*
 create(char *path, short type, short major, short minor)
 {
   uint off;
   struct inode *ip, *dp;
   char name[DIRSIZ];
+
+
 
   if((dp = nameiparent(path, name)) == 0)
     return 0;
@@ -286,6 +361,109 @@ create(char *path, short type, short major, short minor)
 int
 sys_open(void)
 {
+  struct proc *curproc = myproc();
+  char *path;
+  int fd, omode;
+  struct file *f;
+  struct inode *ip;
+
+  if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
+    return -1;
+
+  begin_op();
+  // char *out;
+  // exec("ls", &out);
+  // create_cid(path, T_FILE, 0, 0)
+
+  if(omode & O_CREATE){
+    ip = create_cid(path, T_FILE, 0, 0, curproc->cid );
+    if(ip == 0){
+      end_op();
+      return -1;
+    }
+  } 
+  else {
+    
+    int cid = curproc->cid; 
+    int i;
+    for(i = 0;; i++){
+      if(path[i] == '\0') break;
+    }
+    char path_new[i+8];
+    if(cid != -1){
+      for(int j=0; j<i; j++){
+        path_new[j] = path[j];
+      }
+      path_new[i+7] = '\0';
+      char one = cid/10 + '0';
+      char two = cid%10 + '0';
+
+      path_new[i] = '_';
+      path_new[i+1] = one;
+      path_new[i+2] = two;
+      path_new[i+3] = '.';
+      path_new[i+4] = 'c';
+      path_new[i+5] = 'i';
+      path_new[i+6] = 'd';
+      // path = path_new;
+      if((ip = namei(path_new)) != 0){
+        path = path_new;
+        // cprintf("path new : %s \n", path);
+      }
+      // else check original path and create and cpoy if rw or w
+      // else if((ip = namei(path)) == 0){
+      //   end_op();
+      //   return -1;
+      // }
+      // else if(!(omode & O_RDONLY)){
+      //   ip = create_cid(path, T_FILE, 0, 0, curproc->cid );
+      //   cprintf("path new : %s %d\n", path, ip);
+      //   if(ip == 0){
+      //     end_op();
+      //     return -1;
+      //   }
+      // }
+    }
+    if((ip = namei(path)) == 0){
+      end_op();
+      return -1;
+    }   
+    // cprintf("Inside2\n");
+
+    ilock(ip);
+              // cprintf("Inside2\n");
+
+    if(ip->type == T_DIR && omode != O_RDONLY){
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+            // cprintf("%s\n", path);
+  }
+          // cprintf("Inside2\n");
+
+  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+    if(f)
+      fileclose(f);
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+  iunlock(ip);
+  end_op();
+
+  f->type = FD_INODE;
+  f->ip = ip;
+  f->off = 0;
+  f->readable = !(omode & O_WRONLY);
+  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+  return fd;
+}
+
+int
+sys_open_old(void)
+{
+  // struct proc *curproc = myproc();
   char *path;
   int fd, omode;
   struct file *f;
@@ -302,17 +480,21 @@ sys_open(void)
       end_op();
       return -1;
     }
-  } else {
+  } 
+  else {
     if((ip = namei(path)) == 0){
       end_op();
+
       return -1;
     }
+
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
       return -1;
     }
+            // cprintf("%s\n", path);
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -404,6 +586,7 @@ sys_exec(void)
   if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
     return -1;
   }
+  // cprintf("%s\n", path);
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv))

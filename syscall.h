@@ -34,5 +34,11 @@
 #define SYS_destroy_container	29
 #define SYS_join_container		30
 #define SYS_leave_container		31
+#define SYS_get_container		32
+#define SYS_open_old			33
+#define SYS_scheduler_log_on	34
+#define SYS_scheduler_log_off	35
 
-#define NUM_SYSCALLS    31
+
+#define NUM_SYSCALLS    35
+	

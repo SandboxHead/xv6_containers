@@ -19,6 +19,8 @@ exec(char *path, char **argv)
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
 
+  // cprintf("%s %s \n", argv[1], argv[2]);
+
   begin_op();
 
   if((ip = namei(path)) == 0){

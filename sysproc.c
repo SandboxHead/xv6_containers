@@ -130,6 +130,9 @@ char *name_of_syscall[NUM_SYSCALLS + 1] = {
 "sys_destroy_container",
 "sys_join_container",
 "sys_leave_container",
+"sys_get_container",
+// "sys_scheduler_log_on",
+// "sys_scheduler_log_off",
 };
 
 int syscall_counter[NUM_SYSCALLS + 1];
@@ -228,4 +231,20 @@ sys_leave_container(void)
   return leave_container();
 }
 
+int
+sys_get_container(void)
+{
+  return myproc()->cid;
+}
 
+int
+sys_scheduler_log_on(void){
+  // ptable.log = 1;
+  return logoff();
+}
+
+int
+sys_scheduler_log_off(void){
+  // ptable.log = 0;
+  return logon();
+}
