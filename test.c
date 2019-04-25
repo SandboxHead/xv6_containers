@@ -1,7 +1,7 @@
 // #include "types.h"
 // #include "stat.h"
 // #include "user.h"
-#include "ls.c"
+#include "ls1.c"
 
 int main(void){
 	int c1 = create_container();
@@ -44,7 +44,8 @@ int main(void){
 		// char* writing = "abcde";
 		// write(fid, (void*)writing, 5);
 		// close(fid);
-
+		ls(".");
+		print_ls();
 		fid = open("aniket", 0x002);
 		char* writing = "abcde";
 		write(fid, (void*)writing, 5);

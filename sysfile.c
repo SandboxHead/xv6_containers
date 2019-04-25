@@ -375,8 +375,10 @@ sys_open(void)
   // exec("ls", &out);
   // create_cid(path, T_FILE, 0, 0)
 
-  if(omode & O_CREATE){
+  // if(omode & O_CREATE){
+  if((omode & O_CREATE) || (curproc->cid != -1 && (omode & O_WRONLY))  || (curproc->cid != -1 && (omode & O_RDWR))){
     ip = create_cid(path, T_FILE, 0, 0, curproc->cid );
+        // cprintf("create  : %s %d\n", path, ip);
     if(ip == 0){
       end_op();
       return -1;
@@ -408,7 +410,7 @@ sys_open(void)
       // path = path_new;
       if((ip = namei(path_new)) != 0){
         path = path_new;
-        // cprintf("path new : %s \n", path);
+        // cprintf("ip : %d \n", ip);
       }
       // else check original path and create and cpoy if rw or w
       // else if((ip = namei(path)) == 0){
@@ -416,12 +418,14 @@ sys_open(void)
       //   return -1;
       // }
       // else if(!(omode & O_RDONLY)){
+      //   // end_op();
       //   ip = create_cid(path, T_FILE, 0, 0, curproc->cid );
-      //   cprintf("path new : %s %d\n", path, ip);
-      //   if(ip == 0){
-      //     end_op();
-      //     return -1;
-      //   }
+      //   cprintf("path new : %s %d\n", path_new, ip);
+      //   // if(ip == 0){
+      //   //   end_op();
+      //   //   return -1;
+      //   // }
+      //   path = path_new;
       // }
     }
     if((ip = namei(path)) == 0){

@@ -142,19 +142,19 @@ void print_ls(){
   conatiner_len = 0;
 }
 
-int
-main(int argc, char *argv[])
-{
-  int i;
+// int
+// main(int argc, char *argv[])
+// {
+//   int i;
 
-  if(argc < 2){
-    ls(".");
-    print_ls();
-    exit();
-  }
-  for(i=1; i<argc; i++){
-    ls(argv[i]);
-    print_ls();
-  }
-  exit();
-}
+//   if(argc < 2){
+//     ls(".");
+//     print_ls();
+//     exit();
+//   }
+//   for(i=1; i<argc; i++){
+//     ls(argv[i]);
+//     print_ls();
+//   }
+//   exit();
+// }
