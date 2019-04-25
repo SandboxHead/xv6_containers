@@ -186,6 +186,7 @@ UPROGS=\
 	_user_toggle\
 	_test\
 	_cp\
+	_user_\
 
 fs.img: mkfs README randome.txt $(UPROGS)
 	./mkfs fs.img README randome.txt $(UPROGS)
@@ -261,6 +262,8 @@ EXTRA=\
 	.gdbinit.tmpl gdbutil\
 	print_count.c user_toggle.c\
 	test.c\
+	user_.c\
+	# user_test_assig3.c\
 
 dist:
 	rm -rf dist

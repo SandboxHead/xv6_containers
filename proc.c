@@ -744,7 +744,7 @@ int
 destroy_container(uint cid)
 {
    	struct proc *curproc = myproc();
-   	if(curproc->cid != cid) return -1;
+   	if(curproc->cid != -1) return -1;
 
     acquire(&ctable.lock);
     if(ctable.cont[cid].state == ACTIVE){

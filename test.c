@@ -3,6 +3,38 @@
 // #include "user.h"
 #include "ls1.c"
 
+char buf[512];
+
+void
+cat_util(int fd)
+{
+  int n;
+
+  while((n = read(fd, buf, sizeof(buf))) > 0) {
+    if (write(1, buf, n) != n) {
+      printf(1, "cat: write error\n");
+      exit();
+    }
+  }
+  if(n < 0){
+    printf(1, "cat: read error\n");
+    exit();
+  }
+}
+
+int
+cat(char *argv)
+{
+  	int fd;
+	if((fd = open(argv, 0x000)) < 0){
+	  printf(1, "cat: cannot open %s\n", argv);
+	  exit();
+	}
+	cat_util(fd);
+	close(fd);
+ 	exit();
+}
+
 int main(void){
 	int c1 = create_container();
 	int c2 = create_container();
@@ -44,19 +76,25 @@ int main(void){
 		// char* writing = "abcde";
 		// write(fid, (void*)writing, 5);
 		// close(fid);
-		ls(".");
-		print_ls();
+		// ls(".");
+		// print_ls();
 		fid = open("aniket", 0x002);
 		char* writing = "abcde";
 		write(fid, (void*)writing, 5);
 		close(fid);
+		// char *args[14];
+		char a[6] ="aniket";
+		// strcpy(a , "aniket");
+		// args[0] = a;
+		// printf(1, "%s\n", a);
+		cat(a);
 		// ls();
 		// char *out = "aniket";
 		// char *out;
 		// char *out1[1] = {out};
 		// exec("ls", &out);
-		ls(".");
-		print_ls();
+		// ls(".");
+		// print_ls();
 		// int i = 0;
 		// for(i=0;;i++){
 		// 	if(out[i] == '\0') break;
